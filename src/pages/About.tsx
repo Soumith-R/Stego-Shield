@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { FiLinkedin, FiGithub, FiHeart, FiAward, FiUsers, FiCode } from 'react-icons/fi'
+import { FiLinkedin, FiGithub, FiHeart, FiAward, FiUsers } from 'react-icons/fi'
 import styles from './About.module.css'
 
 const teamMembers = [
