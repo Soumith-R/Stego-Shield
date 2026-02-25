@@ -81,6 +81,4 @@ This is a major project by CSE (AI & ML) students from **Keshav Memorial Enginee
 
 This project is for educational purposes.
 
----
 
-Made with ❤️ by KMEC Students
