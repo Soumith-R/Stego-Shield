@@ -146,17 +146,12 @@ const About = () => {
                   platform for hiding messages within images.
                 </p>
                 <p>
-                  This project showcases our skills in <strong>React</strong>, <strong>TypeScript</strong>, 
-                  and <strong>image processing algorithms</strong>. We believe in building solutions that 
-                  are not only functional but also beautifully designed and intuitive to use.
-                </p>
-                <p>
                   Feel free to connect with us on LinkedIn and check out our other projects on GitHub. 
                   We're always excited to collaborate and learn from the community! 🚀
                 </p>
               </div>
 
-              <div className={styles.techStack}>
+              {/* <div className={styles.techStack}>
                 <h3><FiCode /> Built With</h3>
                 <div className={styles.techTags}>
                   <span>React</span>
@@ -166,7 +161,7 @@ const About = () => {
                   <span>LSB Steganography</span>
                   <span>Canvas API</span>
                 </div>
-              </div>
+              </div> */}
             </div>
           </motion.div>
 
