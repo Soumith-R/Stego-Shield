@@ -55,6 +55,7 @@
 
 /* Upload Section */
 .uploadSection,
+.passwordSection,
 .actionSection,
 .resultSection {
   background: var(--bg-card);
@@ -152,6 +153,69 @@
 
 .removeBtn:hover {
   transform: scale(1.1);
+}
+
+/* Password Section */
+.passwordWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  padding: 0 1.25rem;
+  transition: border-color var(--transition-fast);
+}
+
+.passwordWrapper:focus-within {
+  border-color: #f093fb;
+  box-shadow: 0 0 0 3px rgba(240, 147, 251, 0.2);
+}
+
+.passwordIcon {
+  color: #f093fb;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.passwordInput {
+  flex: 1;
+  padding: 1rem 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  outline: none;
+}
+
+.passwordInput::placeholder {
+  color: var(--text-muted);
+}
+
+.togglePassword {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  font-size: 1.25rem;
+  transition: color var(--transition-fast);
+}
+
+.togglePassword:hover {
+  color: var(--text-primary);
+}
+
+.passwordHint {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 /* Action Section */
@@ -314,6 +378,7 @@
   }
 
   .uploadSection,
+  .passwordSection,
   .actionSection,
   .resultSection {
     padding: 1.5rem;

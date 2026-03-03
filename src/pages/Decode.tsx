@@ -1,15 +1,17 @@
 import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { 
-  FiUnlock, FiUploadCloud, FiX, FiCopy, 
-  FiCheckCircle, FiAlertCircle, FiSearch, FiLock
+import {
+  FiUnlock, FiUploadCloud, FiX, FiCopy,
+  FiCheckCircle, FiAlertCircle, FiSearch, FiLock, FiKey, FiEye, FiEyeOff
 } from 'react-icons/fi'
 import { decodeMessage } from '../utils/steganography'
 import styles from './Decode.module.css'
 
 const Decode = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [decodedMessage, setDecodedMessage] = useState<string | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -67,10 +69,15 @@ const Decode = () => {
       return
     }
 
+    if (!password) {
+      showToast('Please enter the decryption password', 'error')
+      return
+    }
+
     setIsProcessing(true)
 
     try {
-      const message = await decodeMessage(imagePreview)
+      const message = await decodeMessage(imagePreview, password)
       
       if (!message || message.trim() === '') {
         setDecodedMessage('')
@@ -126,7 +133,7 @@ const Decode = () => {
               <FiUnlock className="icon" /> Decode Message
             </h1>
             <p className="section-subtitle">
-              Extract hidden messages from steganographic images
+              Extract hidden messages from steganographic images using AES-GCM decryption
             </p>
           </motion.div>
 
@@ -176,17 +183,46 @@ const Decode = () => {
               </div>
             </div>
 
+            {/* Password Input */}
+            <div className={styles.passwordSection}>
+              <h3 className={styles.stepTitle}>
+                <span className={styles.stepNumber}>2</span>
+                Decryption Password
+              </h3>
+
+              <div className={styles.passwordWrapper}>
+                <FiKey className={styles.passwordIcon} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className={styles.passwordInput}
+                  placeholder="Enter the decryption password..."
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className={styles.togglePassword}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
+              <p className={styles.passwordHint}>
+                Enter the same password that was used during encoding.
+              </p>
+            </div>
+
             {/* Decode Button */}
             <div className={styles.actionSection}>
               <h3 className={styles.stepTitle}>
-                <span className={styles.stepNumber}>2</span>
+                <span className={styles.stepNumber}>3</span>
                 Extract Hidden Message
               </h3>
 
               <button
                 className={`btn btn-primary btn-large ${styles.decodeBtn}`}
                 onClick={handleDecode}
-                disabled={!imagePreview || isProcessing}
+                disabled={!imagePreview || !password || isProcessing}
               >
                 {isProcessing ? (
                   <>

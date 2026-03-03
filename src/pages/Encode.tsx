@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { 
-  FiLock, FiUploadCloud, FiX, FiDownload, 
-  FiInfo, FiCheckCircle, FiAlertCircle, FiUnlock
+import {
+  FiLock, FiUploadCloud, FiX, FiDownload,
+  FiInfo, FiCheckCircle, FiAlertCircle, FiUnlock, FiKey, FiEye, FiEyeOff
 } from 'react-icons/fi'
 import { encodeMessage, calculateCapacity } from '../utils/steganography'
 import styles from './Encode.module.css'
@@ -23,6 +23,8 @@ const Encode = () => {
     height: 0
   })
   const [message, setMessage] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -90,6 +92,11 @@ const Encode = () => {
       return
     }
 
+    if (!password) {
+      showToast('Please enter an encryption password', 'error')
+      return
+    }
+
     if (message.length > capacity) {
       showToast(`Message too long! Maximum ${capacity} characters`, 'error')
       return
@@ -98,7 +105,7 @@ const Encode = () => {
     setIsProcessing(true)
 
     try {
-      const encodedDataUrl = await encodeMessage(image.preview, message)
+      const encodedDataUrl = await encodeMessage(image.preview, message, password)
       
       // Download the encoded image
       const link = document.createElement('a')
@@ -138,7 +145,7 @@ const Encode = () => {
               <FiLock className="icon" /> Encode Message
             </h1>
             <p className="section-subtitle">
-              Hide your secret message inside an image using LSB steganography
+              Hide your secret message inside an image using edge-adaptive LSB steganography with AES-GCM encryption
             </p>
           </motion.div>
 
@@ -197,10 +204,39 @@ const Encode = () => {
               )}
             </div>
 
+            {/* Password Input */}
+            <div className={styles.passwordSection}>
+              <h3 className={styles.stepTitle}>
+                <span className={styles.stepNumber}>2</span>
+                Encryption Password
+              </h3>
+
+              <div className={styles.passwordWrapper}>
+                <FiKey className={styles.passwordIcon} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className={styles.passwordInput}
+                  placeholder="Enter a strong encryption password..."
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className={styles.togglePassword}
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
+              <p className={styles.passwordHint}>
+                Remember this password — you will need it to decode the message.
+              </p>
+            </div>
+
             {/* Message Input */}
             <div className={styles.messageSection}>
               <h3 className={styles.stepTitle}>
-                <span className={styles.stepNumber}>2</span>
+                <span className={styles.stepNumber}>3</span>
                 Enter Secret Message
               </h3>
 
@@ -224,14 +260,14 @@ const Encode = () => {
             {/* Encode Button */}
             <div className={styles.actionSection}>
               <h3 className={styles.stepTitle}>
-                <span className={styles.stepNumber}>3</span>
+                <span className={styles.stepNumber}>4</span>
                 Encode & Download
               </h3>
 
               <button
                 className={`btn btn-primary btn-large ${styles.encodeBtn}`}
                 onClick={handleEncode}
-                disabled={!image.preview || !message.trim() || isProcessing}
+                disabled={!image.preview || !message.trim() || !password || isProcessing}
               >
                 {isProcessing ? (
                   <>
