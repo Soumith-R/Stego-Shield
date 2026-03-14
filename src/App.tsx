@@ -7,6 +7,7 @@ import Home from './pages/Home'
 import Encode from './pages/Encode'
 import Decode from './pages/Decode'
 import About from './pages/About'
+import GenerateImages from './pages/GenerateImages'
 
 // Scroll to top on route change
 function ScrollToTop() {
@@ -28,6 +29,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/encode" element={<Encode />} />
+          <Route path="/generate-images" element={<GenerateImages />} />
           <Route path="/decode" element={<Decode />} />
           <Route path="/about" element={<About />} />
         </Routes>

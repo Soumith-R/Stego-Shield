@@ -286,6 +286,11 @@ const Encode = () => {
               </p>
 
               <div className={styles.switchAction}>
+                <span>Need a fresh cover image first?</span>
+                <Link to="/generate-images" className={styles.switchLink}>
+                  <FiUploadCloud /> Generate an AI Image
+                </Link>
+
                 <span>Want to extract a hidden message?</span>
                 <Link to="/decode" className={styles.switchLink}>
                   <FiUnlock /> Go to Decode

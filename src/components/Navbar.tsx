@@ -7,6 +7,7 @@ import styles from './Navbar.module.css'
 const navLinks = [
   { path: '/', label: 'Home' },
   { path: '/encode', label: 'Encode' },
+  { path: '/generate-images', label: 'Generate Images' },
   { path: '/decode', label: 'Decode' },
   { path: '/about', label: 'About' },
 ]
