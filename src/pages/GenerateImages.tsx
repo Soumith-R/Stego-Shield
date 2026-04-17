@@ -10,7 +10,8 @@ import {
   FiCheckCircle,
   FiCpu,
   FiSliders,
-  FiZap
+  FiZap,
+  FiServer
 } from 'react-icons/fi'
 import styles from './GenerateImages.module.css'
 
@@ -50,6 +51,7 @@ const POLLINATIONS_PUBLISHABLE_KEY = import.meta.env.VITE_POLLINATIONS_PUBLISHAB
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const GenerateImages = () => {
+  const [provider, setProvider] = useState('pollinations') // 'pollinations' or 'horde'
   const [prompt, setPrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('blurry, distorted, low quality, watermark, text')
   const [model, setModel] = useState(modelOptions[0].value)
@@ -60,6 +62,7 @@ const GenerateImages = () => {
   const [loadedImage, setLoadedImage] = useState(false)
   const [error, setError] = useState('')
   const [activeSeed, setActiveSeed] = useState<number | null>(null)
+  const [hordeStatus, setHordeStatus] = useState('')
 
   const selectedAspect = useMemo(
     () => aspectOptions.find((option) => option.value === aspect) ?? aspectOptions[0],
@@ -104,15 +107,10 @@ const GenerateImages = () => {
       fallbackParams.set('negative_prompt', negativePrompt.trim())
     }
 
-    const attemptUrls = [
-      `https://gen.pollinations.ai/image/${encodeURIComponent(trimmedPrompt)}?${fullParams.toString()}`,
-      `https://gen.pollinations.ai/image/${encodeURIComponent(trimmedPrompt)}?${fallbackParams.toString()}`,
-      `https://gen.pollinations.ai/image/${encodeURIComponent(trimmedPrompt)}?model=flux`,
-    ]
-
     setError('')
     setLoadedImage(false)
     setIsGenerating(true)
+    setHordeStatus('')
     setActiveSeed(nextSeed)
 
     // Revoke any previous blob URL to free memory
@@ -120,6 +118,78 @@ const GenerateImages = () => {
       URL.revokeObjectURL(imageUrl)
     }
     setImageUrl('')
+
+    if (provider === 'horde') {
+      try {
+        setHordeStatus('Submitting prompt to AI Horde...')
+        const res = await fetch('https://stablehorde.net/api/v2/generate/async', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': '0000000000',
+          },
+          body: JSON.stringify({
+            prompt: trimmedPrompt,
+            params: {
+              sampler_name: 'k_euler',
+              cfg_scale: 7,
+              height: selectedAspect.height,
+              width: selectedAspect.width,
+              seed: String(nextSeed),
+              steps: 20,
+            },
+            censor_nsfw: false,
+          }),
+        })
+
+        if (!res.ok) throw new Error('Failed to submit prompt to AI Horde.')
+
+        const data = await res.json()
+        if (!data.id) throw new Error('No job ID returned by AI Horde.')
+
+        let done = false
+        let url = ''
+        let attempts = 0
+        while (!done) {
+          if (attempts > 60) throw new Error('Horde generation timed out after 5 minutes.')
+          await wait(5000)
+          const statusRes = await fetch(`https://stablehorde.net/api/v2/generate/status/${data.id}`)
+          if (!statusRes.ok) continue
+          const statusDat = await statusRes.json()
+
+          if (statusDat.faulted) {
+            throw new Error('AI Horde job faulted. Try a different prompt or wait a bit.')
+          }
+          if (statusDat.done) {
+            done = true
+            url = statusDat.generations[0].img
+          } else {
+            setHordeStatus(`Waiting in queue... Position: ${statusDat.queue_position || '...'} / Wait time: ~${statusDat.wait_time || 0}s`)
+          }
+          attempts += 1
+        }
+
+        let finalUrl = url
+        if (!finalUrl.startsWith('http')) {
+          finalUrl = `data:image/webp;base64,${finalUrl}`
+        }
+
+        setImageUrl(finalUrl)
+        setLoadedImage(true)
+      } catch (err: any) {
+        setError(err.message || 'AI Horde generation failed.')
+      } finally {
+        setIsGenerating(false)
+        setHordeStatus('')
+      }
+      return
+    }
+
+    const attemptUrls = [
+      `https://gen.pollinations.ai/image/${encodeURIComponent(trimmedPrompt)}?${fullParams.toString()}`,
+      `https://gen.pollinations.ai/image/${encodeURIComponent(trimmedPrompt)}?${fallbackParams.toString()}`,
+      `https://gen.pollinations.ai/image/${encodeURIComponent(trimmedPrompt)}?model=flux`,
+    ]
 
     try {
       let generatedBlob: Blob | null = null
@@ -247,19 +317,34 @@ const GenerateImages = () => {
 
               <div className={styles.gridFields}>
                 <label className={styles.fieldGroup}>
-                  <span className={styles.fieldLabel}><FiCpu /> Model</span>
+                  <span className={styles.fieldLabel}><FiServer /> Engine</span>
                   <select
                     className={styles.selectInput}
-                    value={model}
-                    onChange={(event) => setModel(event.target.value)}
+                    value={provider}
+                    onChange={(event) => setProvider(event.target.value)}
                   >
-                    {modelOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
+                    <option value="pollinations">Pollinations (Fast)</option>
+                    <option value="horde">AI Horde (Community/Wait)</option>
                   </select>
                 </label>
+
+                {provider === 'pollinations' && (
+                  <label className={styles.fieldGroup}>
+                    <span className={styles.fieldLabel}><FiCpu /> Model</span>
+                    <select
+                      className={styles.selectInput}
+                      value={model}
+                      onChange={(event) => setModel(event.target.value)}
+                    >
+                      {modelOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
 
                 <label className={styles.fieldGroup}>
                   <span className={styles.fieldLabel}><FiSliders /> Aspect</span>
@@ -321,10 +406,11 @@ const GenerateImages = () => {
               </button>
 
               <div className={styles.infoCard}>
-                <h3>Powered by Pollinations AI</h3>
+                <h3>{provider === 'pollinations' ? 'Powered by Pollinations AI' : 'Powered by AI Horde'}</h3>
                 <p>
-                  This page uses Pollinations public endpoint with a publishable key and automatic retries.
-                  If generation fails, retry after a few seconds (temporary rate limits can happen).
+                  {provider === 'pollinations'
+                    ? 'This page uses Pollinations public endpoint with a publishable key and automatic retries. If generation fails due to high load, try switching to AI Horde.'
+                    : 'AI Horde is a community-driven cluster of image generators. It is free and requires no keys, but relies on volunteers, so you may need to wait in a queue for your image.'}
                 </p>
               </div>
             </motion.div>
@@ -347,7 +433,11 @@ const GenerateImages = () => {
                 {isGenerating && (
                   <div className={styles.loadingState}>
                     <span className={styles.spinner}></span>
-                    <p>Generating your image, this may take a few seconds...</p>
+                    <p>
+                      {provider === 'horde' && hordeStatus
+                        ? hordeStatus
+                        : 'Generating your image, this may take a few seconds...'}
+                    </p>
                   </div>
                 )}
                 {imageUrl && loadedImage ? (
