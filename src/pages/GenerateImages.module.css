@@ -168,6 +168,7 @@
 
 .modelNote,
 .errorNote,
+.providerCard,
 .infoCard,
 .workflowCard {
   display: flex;
@@ -200,27 +201,112 @@
   flex-shrink: 0;
 }
 
+/* Provider card */
+.providerCard {
+  align-items: flex-start;
+  margin-bottom: 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  transition: border-color var(--transition-fast);
+}
+
+.providerCard strong {
+  display: block;
+  font-size: 0.95rem;
+  margin-bottom: 0.2rem;
+}
+
+.providerCard p {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.providerBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: color-mix(in srgb, var(--provider-color, #4facfe) 15%, transparent);
+  color: var(--provider-color, #4facfe);
+  border: 1px solid color-mix(in srgb, var(--provider-color, #4facfe) 30%, transparent);
+  white-space: nowrap;
+}
+
+/* Provider stack note at bottom */
+.providerStackNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius-sm);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.providerStackNote svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--accent-color);
+}
+
 .generateButton {
   width: 100%;
 }
 
 .infoCard,
 .workflowCard {
-  flex-direction: column;
   margin-top: 1.5rem;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border-color);
+}
+
+.infoCard {
+  flex-direction: column;
+}
+
+.workflowCard {
+  align-items: flex-start;
+}
+
+.workflowCard > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .infoCard h3,
 .workflowCard h3 {
   font-size: 1rem;
   font-weight: 600;
+  margin: 0;
 }
 
 .infoCard p,
 .workflowCard p {
   color: var(--text-muted);
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+/* Engine hints in empty state */
+.engineHints {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .seedBadge {
