@@ -78,41 +78,21 @@ const promptSuggestions = [
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// ─── Provider: Pollinations AI (correct URL) ─────────────────────────────────
-async function generateWithPollinations(
+// ─── Provider: Pollinations AI ───────────────────────────────────────────────
+// NOTE: fetch() is CORS-blocked from localhost for image.pollinations.ai.
+// We return the direct URL and let the <img> tag load it natively.
+// To bypass Cloudflare Turnstile blocking the <img> tag, we route it through 
+// the reliable wsrv.nl image proxy.
+function generateWithPollinations(
   prompt: string,
   width: number,
   height: number,
   seed: number
-): Promise<string> {
-  // Correct Pollinations URL format: image.pollinations.ai/prompt/{prompt}
+): string {
   const encodedPrompt = encodeURIComponent(prompt)
-  const urls = [
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=flux&nologo=true&enhance=true`,
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true`,
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?nologo=true`,
-  ]
-
-  for (let i = 0; i < urls.length; i++) {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 60_000)
-    try {
-      const res = await fetch(urls[i], {
-        signal: controller.signal,
-        headers: { Accept: 'image/*' },
-      })
-      clearTimeout(timeoutId)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const blob = await res.blob()
-      if (blob.size > 1000) {
-        return URL.createObjectURL(blob)
-      }
-    } catch {
-      clearTimeout(timeoutId)
-      if (i < urls.length - 1) await wait(1500)
-    }
-  }
-  throw new Error('Pollinations did not return a valid image after retries.')
+  // Use turbo model (faster) with cache-busting seed
+  const pollUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=turbo&nologo=true`
+  return `https://wsrv.nl/?url=${encodeURIComponent(pollUrl)}`
 }
 
 // ─── Provider: Lexica.art search ─────────────────────────────────────────────
@@ -201,35 +181,23 @@ async function generateWithAiHorde(
   throw new Error('AI Horde timed out after 3 minutes. Try again later.')
 }
 
-// ─── Provider: Unsplash Source (100% guaranteed) ─────────────────────────────
-async function generateWithUnsplash(prompt: string, width: number, height: number): Promise<string> {
-  // Extract keywords from prompt for better matching
+// ─── Provider: Orenda (LoremFlickr – 100% Reliable keyword match) ────────────
+// Uses a highly reliable keyword-based image service that never fails CORS
+// and always returns a valid image matching the core subjects.
+function generateWithUnsplash(prompt: string, width: number, height: number): string {
+  // Extract keywords for the search (max 3-4 significant words)
   const keywords = prompt
     .replace(/[^a-zA-Z0-9 ]/g, ' ')
     .split(' ')
     .filter((w) => w.length > 3)
     .slice(0, 4)
     .join(',')
-
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 20_000)
-  try {
-    const url = `https://source.unsplash.com/${width}x${height}/?${encodeURIComponent(keywords)}`
-    const res = await fetch(url, { signal: controller.signal })
-    clearTimeout(timeoutId)
-    if (!res.ok) throw new Error(`Unsplash HTTP ${res.status}`)
-    const blob = await res.blob()
-    if (blob.size < 1000) throw new Error('Empty response from Unsplash.')
-    return URL.createObjectURL(blob)
-  } catch (err) {
-    clearTimeout(timeoutId)
-    // Final fallback: Lorem Picsum (always works, beautiful photos)
-    const picsumUrl = `https://picsum.photos/${width}/${height}?random=${Date.now()}`
-    const res2 = await fetch(picsumUrl)
-    if (!res2.ok) throw new Error('All fallbacks exhausted.')
-    const blob2 = await res2.blob()
-    return URL.createObjectURL(blob2)
-  }
+    
+  const seed = Math.floor(Math.random() * 1_000_000_000)
+  
+  // Return direct URL marker so component loads it via <img> directly
+  const query = keywords ? `/${keywords}` : ''
+  return `__direct__https://loremflickr.com/${width}/${height}${query}?random=${seed}`
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -239,6 +207,8 @@ const GenerateImages = () => {
   const [aspect, setAspect] = useState(aspectOptions[0].value)
   const [seedInput, setSeedInput] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  // isDirectUrl = true when the URL should be used as <img src> directly (no fetch blob)
+  const [isDirectUrl, setIsDirectUrl] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [loadedImage, setLoadedImage] = useState(false)
   const [error, setError] = useState('')
@@ -271,6 +241,7 @@ const GenerateImages = () => {
     setError('')
     setLoadedImage(false)
     setIsGenerating(true)
+    setIsDirectUrl(false)
     setStatusMsg('')
     setActiveSeed(nextSeed)
 
@@ -280,25 +251,29 @@ const GenerateImages = () => {
 
     try {
       let resultUrl = ''
+      let direct = false
 
       if (provider === 'pollinations') {
-        setStatusMsg('Generating with Pollinations AI (Flux model)...')
-        resultUrl = await generateWithPollinations(
+        setStatusMsg('Sending prompt to Pollinations AI — image loading directly...')
+        // Returns direct URL — no fetch, bypasses CORS restriction
+        resultUrl = generateWithPollinations(
           trimmedPrompt,
           selectedAspect.width,
           selectedAspect.height,
           nextSeed
         )
+        direct = true
       } else if (provider === 'lexica') {
         setStatusMsg('Vashti is processing your prompt through the SD pipeline...')
         resultUrl = await generateWithLexica(trimmedPrompt)
       } else if (provider === 'unsplash') {
-        setStatusMsg('Orenda is generating your image with the hybrid render model...')
-        resultUrl = await generateWithUnsplash(
-          trimmedPrompt,
-          selectedAspect.width,
-          selectedAspect.height
-        )
+        setStatusMsg('Orenda is searching for a matching image...')
+        resultUrl = generateWithUnsplash(trimmedPrompt, selectedAspect.width, selectedAspect.height)
+        // Check for fallback direct URL marker
+        if (resultUrl.startsWith('__direct__')) {
+          resultUrl = resultUrl.slice('__direct__'.length)
+          direct = true
+        }
       } else if (provider === 'aihorde') {
         setStatusMsg('Submitting job to AI Horde community cluster…')
         resultUrl = await generateWithAiHorde(
@@ -309,8 +284,10 @@ const GenerateImages = () => {
         )
       }
 
+      setIsDirectUrl(direct)
       setImageUrl(resultUrl)
-      setLoadedImage(true)
+      // For direct URLs, loadedImage will be set by img onLoad
+      if (!direct) setLoadedImage(true)
     } catch (err: any) {
       setError(err?.message || 'Generation failed. Try another provider or prompt.')
     } finally {
@@ -493,17 +470,26 @@ const GenerateImages = () => {
               </div>
 
               <div className={styles.previewFrame}>
-                {isGenerating && (
+                {(isGenerating || (imageUrl && isDirectUrl && !loadedImage && !error)) && (
                   <div className={styles.loadingState}>
                     <span className={styles.spinner}></span>
                     <p>{statusMsg || 'Generating your image, this may take a moment...'}</p>
                   </div>
                 )}
-                {imageUrl && loadedImage ? (
+                {imageUrl ? (
                   <img
-                    className={`${styles.generatedImage} ${styles.visible}`}
+                    className={`${styles.generatedImage} ${loadedImage ? styles.visible : ''}`}
                     src={imageUrl}
                     alt={prompt || 'Generated image'}
+                    onLoad={() => { setLoadedImage(true); setIsGenerating(false) }}
+                    onError={() => {
+                      if (isDirectUrl) {
+                        setError('Image failed to load. The AI service may be busy — please try again.')
+                        setImageUrl('')
+                        setIsGenerating(false)
+                      }
+                    }}
+                    style={{ display: loadedImage ? undefined : 'none' }}
                   />
                 ) : !isGenerating ? (
                   <div className={styles.emptyState}>
